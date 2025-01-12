@@ -1,16 +1,15 @@
 import { chromium } from 'playwright';
 import fs from 'fs/promises';
 
-// URL de la página que deseas scrapear
+// URL de la página
 const url = 'https://www.comprasparaguai.com.br/notebook/';
 
-// Función principal de scraping
+// Función principal
 const scrapeNotebooks = async () => {
-  // Inicializa el navegador
-  const browser = await chromium.launch({ headless: true }); // Cambia a false si quieres ver el navegador
+  const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
-  // Establece headers para emular un navegador real
+  // Configura un User-Agent para evitar bloqueos
   await page.setExtraHTTPHeaders({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
   });
@@ -18,20 +17,18 @@ const scrapeNotebooks = async () => {
   // Navega a la URL
   await page.goto(url);
 
-  // Espera a que cargue el contenido dinámico
-  await page.waitForTimeout(5000);
+  // Espera a que los elementos relevantes estén presentes en el DOM
+  await page.waitForSelector('a.truncate');
 
-  // Selecciona los productos en la página
-  const products = await page.$$eval('div.product-box', (elements) => {
+  // Extrae los datos de los productos
+  const products = await page.$$eval('a.truncate', (elements) => {
     return elements.map((element) => {
-      const name = element.querySelector('h2')?.innerText.trim() || 'Sin nombre';
-      const price = element.querySelector('span.price')?.innerText.trim() || 'Sin precio';
-      const image = element.querySelector('img')?.src || 'Sin imagen';
-      const link = element.querySelector('a')?.href || 'Sin enlace';
-      return { name, price, image, link };
+      const name = element.innerText.trim();
+      const link = element.getAttribute('href');
+      return { name, link: `https://www.comprasparaguai.com.br${link}` };
     });
   });
-    console.log(products);
+
   // Cierra el navegador
   await browser.close();
 
@@ -39,7 +36,7 @@ const scrapeNotebooks = async () => {
   return products;
 };
 
-// Ejecuta el scraping y guarda los datos en un archivo JSON
+// Ejecuta el scraping
 (async () => {
   try {
     const products = await scrapeNotebooks();
